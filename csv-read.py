@@ -10,7 +10,7 @@ print("Data url:", url)
 dkanhandler.connect()
 
 def processDataset(data, resources):
-    global dkanhandler
+    global dkanhandler, datasets
     existingDataset = dkanhandler.find(data['name'])
     print()
     print('-----------------------------------------------------')
@@ -21,9 +21,10 @@ def processDataset(data, resources):
     else:
         nid = dkanhandler.create(data)
 
-    dataset = dkanhandler.retrieve(nid)
-    print("RETRIEVED", dataset)
+    dataset = dkanhandler.getDatasetDetails(nid)
+    # print("RETRIEVED", dataset)
     updateResources(dataset, resources)
+    datasets.append(nid)
     # print(data)
     # print(resources)
 
@@ -41,10 +42,13 @@ datasets = []
 data = {}
 resources = []
 
+# Read our special CSV format
+# and create or update DKAN entries
 with closing(requests.get(url, stream=True)) as r:
     reader = csv.reader(codecs.iterdecode(r.iter_lines(), 'utf-8'), delimiter="\t", quotechar='"')
     for row in reader:
-        # Handle each row here...
+
+        # Handle each row
         if (row[0]):
             if ('id' in data):
                 processDataset(data, resources)
@@ -57,3 +61,8 @@ with closing(requests.get(url, stream=True)) as r:
             resources.append({"type": row[2], "url": row[3]})
 
 processDataset(data, resources)
+
+print()
+print("List of existing datasets", datasets)
+print()
+print("FINISHED")

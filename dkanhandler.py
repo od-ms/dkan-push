@@ -5,7 +5,7 @@ def getDkanData(data):
     if (not(data['name'] and data['desc'] and data['tags'])):
         raise Exception('Missing data entry', data)
 
-    return {
+    dkanData = {
         "type": "dataset",
         "title": data['name'],
         "body": {"und":[{"value":data['desc']}]},
@@ -14,8 +14,28 @@ def getDkanData(data):
         "field_spatial_geographical_cover": {"und":[{"value":"Münster"}]},
         "field_granularity": {"und":[{"value":"longitude/latitude"}]},
         "field_spatial": {"und":{"master_column":"wkt","wkt":"{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.5290679931641,51.89293553285],[7.5290679931641,52.007625513725],[7.7350616455078,52.007625513725],[7.7350616455078,51.89293553285]]]},\"properties\":[]}]}"}},
-        "field_tags": {"und":{"value_field": ("\"\"" + data['tags'] +  "\"\"")}}
+        "field_tags": {"und":{"value_field": ("\"\"" + data['tags'] +  "\"\"")}},
     }
+    if "musterds" in data:
+        dkanData["field_additional_info"] = {"und":[
+            {"first":"Kategorie","second":data['musterds']},
+
+            # TODO => For some reason the second entry does not work!
+            {"first":"Identifier","second":data['id']}
+        ]}
+
+    return dkanData
+
+def connect():
+    global api
+    parser = argparse.ArgumentParser()
+    parser.add_argument("uri")
+    parser.add_argument("user")
+    parser.add_argument("passw")
+    args = parser.parse_args()
+    print("DKAN url:", args.uri)
+
+    api = DatasetAPI(args.uri, args.user, args.passw)
 
 def create(data):
     global api
@@ -30,17 +50,6 @@ def update(nodeId, data):
     res = api.node('update', node_id=nodeId, data=getDkanData(data))
     print("result", res.json())
 
-def connect():
-    global api
-    parser = argparse.ArgumentParser()
-    parser.add_argument("uri")
-    parser.add_argument("user")
-    parser.add_argument("passw")
-    args = parser.parse_args()
-    print("DKAN url:", args.uri)
-
-    api = DatasetAPI(args.uri, args.user, args.passw)
-
 
 def find(title):
     global api
@@ -54,14 +63,14 @@ def find(title):
     else:
         return 0
 
-def retrieve(nid):
+def getDatasetDetails(nid):
     global api
     r = api.node('retrieve', node_id=nid)
     return r.json()
 
 def createResource(resource, nid, title):
     global api
-    print("Creating resource", resource)
+    print("[create]", resource)
     rData = {
         "type": "resource",
         "field_dataset_ref": {"und": [{"target_id": "Name (" + nid + ")"}]},
@@ -75,24 +84,27 @@ def createResource(resource, nid, title):
 def updateResources(resources, existingResources, dataset):
     print("CHECKING RESOURCES")
     for existingResource in existingResources:
-        resourceData = retrieve(existingResource['target_id'])
-        rUrl = resourceData['field_link_api']['und'][0]['url']
+        print(existingResource['target_id'], end=' ')
+        resourceData = getDatasetDetails(existingResource['target_id'])
+        if "und" in resourceData['field_link_api']:
+            rUrl = resourceData['field_link_api']['und'][0]['url']
+        elif 'und' in resourceData['field_link_remote_file']:
+            rUrl = resourceData['field_link_remote_file']['und'][0]['uri']
+        else:
+            raise Exception('Unknown resource: no url or uri', resourceData)
 
         el = [x for x in resources if x['url'] == rUrl]
         if el:
             # Found url => remove it from the resources that will be created
             resources = [x for x in resources if x['url'] != rUrl]
-            print("NO CHANGE", rUrl)
+            print("[no-change]", rUrl)
         else:
             # This seems to be an old url that we dont want anymore => delete it
-            print("REMOVE", existingResource)
+            print("[remove]", existingResource)
             op = api.node('delete', node_id=existingResource['target_id'])
             print (op.status_code, op.text)
 
     # Create new resources
     for resource in resources:
-        print("CREATE", resource)
         createResource(resource, dataset['nid'], dataset['title'])
-
-    raise Exception('Test only')
 
