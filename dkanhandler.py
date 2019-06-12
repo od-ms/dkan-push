@@ -21,13 +21,14 @@ def create(data):
     global api
     print("Creating", data['name'])
     res = api.node('create', data=getDkanData(data))
-    print("result", res)
+    print("result", res.json())
+    return res.json()['nid']
 
 def update(nodeId, data):
     global api
     print("Updating", data['name'])
     res = api.node('update', node_id=nodeId, data=getDkanData(data))
-    print("result", res)
+    print("result", res.json())
 
 def connect():
     global api
@@ -52,3 +53,46 @@ def find(title):
         return results[0]
     else:
         return 0
+
+def retrieve(nid):
+    global api
+    r = api.node('retrieve', node_id=nid)
+    return r.json()
+
+def createResource(resource, nid, title):
+    global api
+    print("Creating resource", resource)
+    rData = {
+        "type": "resource",
+        "field_dataset_ref": {"und": [{"target_id": "Name (" + nid + ")"}]},
+        "title": title + " (" + resource['type'] + ")",
+        "field_link_api": {"und":[{"url":resource['url']}]},
+        "field_format": {"und":{"textfield":resource['type']}}
+    }
+    r = api.node('create', data=rData)
+    print(r, r.json())
+
+def updateResources(resources, existingResources, dataset):
+    print("CHECKING RESOURCES")
+    for existingResource in existingResources:
+        resourceData = retrieve(existingResource['target_id'])
+        rUrl = resourceData['field_link_api']['und'][0]['url']
+
+        el = [x for x in resources if x['url'] == rUrl]
+        if el:
+            # Found url => remove it from the resources that will be created
+            resources = [x for x in resources if x['url'] != rUrl]
+            print("NO CHANGE", rUrl)
+        else:
+            # This seems to be an old url that we dont want anymore => delete it
+            print("REMOVE", existingResource)
+            op = api.node('delete', node_id=existingResource['target_id'])
+            print (op.status_code, op.text)
+
+    # Create new resources
+    for resource in resources:
+        print("CREATE", resource)
+        createResource(resource, dataset['nid'], dataset['title'])
+
+    raise Exception('Test only')
+

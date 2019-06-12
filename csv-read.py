@@ -12,13 +12,30 @@ dkanhandler.connect()
 def processDataset(data, resources):
     global dkanhandler
     existingDataset = dkanhandler.find(data['name'])
+    print()
+    print('-----------------------------------------------------')
     print(data['name'], existingDataset)
     if (existingDataset):
-        dkanhandler.update(existingDataset['nid'], data)
+        nid = existingDataset['nid']
+        dkanhandler.update(nid, data)
     else:
-        dkanhandler.create(data)
+        nid = dkanhandler.create(data)
+
+    dataset = dkanhandler.retrieve(nid)
+    print("RETRIEVED", dataset)
+    updateResources(dataset, resources)
     # print(data)
     # print(resources)
+
+def updateResources(dataset, resources):
+    if (('field_resources' in dataset) and ('und' in dataset['field_resources'])):
+        existingResources = dataset['field_resources']['und']
+        if (len(existingResources)):
+            dkanhandler.updateResources(resources, existingResources, dataset)
+    else:
+        # Create all resources
+        for resource in resources:
+            dkanhandler.createResource(resource, dataset['nid'], dataset['title'])
 
 datasets = []
 data = {}
