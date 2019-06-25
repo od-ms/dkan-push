@@ -3,11 +3,12 @@ from contextlib import closing
 import csv
 import codecs
 import dkanhandler
+import config as cfg
 
-url = "https://gist.githubusercontent.com/od-ms/7760fc049ae68df5b973dafd1c9d5be5/raw/test.csv"
+url = cfg.csv_url
 print("Data url:", url)
 
-dkanhandler.connect()
+dkanhandler.connect(cfg)
 
 def processDataset(data, resources):
     global dkanhandler, datasets

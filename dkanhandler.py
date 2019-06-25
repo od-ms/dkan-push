@@ -2,7 +2,7 @@ from dkan.client import DatasetAPI
 import argparse
 
 def getDkanData(data):
-    if (not(data['name'] and data['desc'] and data['tags'])):
+    if not(data['name'] and data['desc'] and data['tags']):
         raise Exception('Missing data entry', data)
 
     dkanData = {
@@ -18,24 +18,19 @@ def getDkanData(data):
     }
     if "musterds" in data:
         dkanData["field_additional_info"] = {"und":[
-            {"first":"Kategorie","second":data['musterds']},
+            {"first": "Kategorie", "second": data['musterds']},
 
             # TODO => For some reason the second entry does not work!
-            {"first":"Identifier","second":data['id']}
+            {"first": "Identifier", "second": data['id']}
         ]}
 
     return dkanData
 
-def connect():
+def connect(args):
     global api
-    parser = argparse.ArgumentParser()
-    parser.add_argument("uri")
-    parser.add_argument("user")
-    parser.add_argument("passw")
-    args = parser.parse_args()
-    print("DKAN url:", args.uri)
+    print("DKAN url:", args.dkan_url)
 
-    api = DatasetAPI(args.uri, args.user, args.passw)
+    api = DatasetAPI(args.dkan_url, args.user, args.passw)
 
 def create(data):
     global api
@@ -71,12 +66,17 @@ def getDatasetDetails(nid):
 def createResource(resource, nid, title):
     global api
     print("[create]", resource)
+
+    rFormat = resource['type']
+    if (rFormat[0:3] == "WFS"): # omit WFS Version in type
+        rFormat = "WFS"
+
     rData = {
         "type": "resource",
         "field_dataset_ref": {"und": [{"target_id": "Name (" + nid + ")"}]},
         "title": title + " (" + resource['type'] + ")",
-        "field_link_api": {"und":[{"url":resource['url']}]},
-        "field_format": {"und":{"textfield":resource['type']}}
+        "field_link_api": {"und": [{"url": resource['url']}]},
+        "field_format": {"und": {"textfield": rFormat}}
     }
     r = api.node('create', data=rData)
     print(r, r.json())
