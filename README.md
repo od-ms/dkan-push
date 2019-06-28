@@ -11,15 +11,15 @@ Create a config file like this:
 
 config.py
 
-   user = "username"
-   pass = "password"
-   dkan_url = "https://dkan-portal.url"
-   csv_url = "https://url-to-csv.host/file.csv"
+    user = "username"
+    pass = "password"
+    dkan_url = "https://dkan-portal.url"
+    csv_url = "https://url-to-csv.host/file.csv"
 
 Or copy and modify _config.dist.py_.
 Then run
 
-   python3 csv2dkan.py
+    python3 csv2dkan.py
 
 ### Config options
 
