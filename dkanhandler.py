@@ -17,12 +17,14 @@ def getDkanData(data):
         "field_tags": {"und": {"value_field": ("\"\"" + data['tags'] + "\"\"")}},
     }
     if "musterds" in data:
-        dkanData["field_additional_info"] = {"und": [
-            {"first": "Kategorie", "second": data['musterds']},
+        additional_fields = [
+            {"first": "Kategorie", "second": data['musterds'], "_weight": 0},
+            {"first": "Identifier", "second": data['id'], "_weight": 1}
+        ]
+        if "Koordinatenreferenzsystem" in data:
+            additional_fields.append({"first": "Koordinatenreferenzsystem", "second": data['Koordinatenreferenzsystem'], "_weight": 2})
 
-            # TODO => For some reason the second entry does not work!
-            {"first": "Identifier", "second": data['id']}
-        ]}
+        dkanData["field_additional_info"] = {"und": additional_fields}
 
     return dkanData
 
@@ -85,6 +87,15 @@ def getResourceDkanData(resource, nid, title):
         "field_dataset_ref": {"und": [{"target_id": "Name (" + nid + ")"}]},
         "title": rTitle,
         "field_link_api": {"und": [{"url": resource['url']}]},
+        "field_link_remote_file": {"und": [{
+            "filefield_dkan_remotefile": {"url": ""},
+            "fid": 0,
+            "display": 1
+        }]},
+        "body": {"und": [{
+            "value": resource['body'] if ("body" in resource) and resource['body'] else "",
+            "format": "plain_text"
+        }]},
         "field_format": {"und": {"textfield": rFormat}}
     }
     return rData
@@ -99,11 +110,10 @@ def createResource(resource, nid, title):
 
 def updateResource(data, nodeId):
     global api
-    print("[update]", data)
+    print("[update]", data['title'])
     r = api.node('update', node_id=nodeId, data=data)
     if r.status_code != 200:
         raise Exception('Error during update:', r, r.json())
-    print(r, r.json())
 
 
 def updateResources(resources, existingResources, dataset):

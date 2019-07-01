@@ -4,6 +4,7 @@ import csv
 import codecs
 import dkanhandler
 import config as cfg
+import sys
 
 url = cfg.csv_url
 print("Data url:", url)
@@ -13,26 +14,30 @@ dkanhandler.connect(cfg)
 
 def processDataset(data, resources):
     global dkanhandler, datasets
-    if ('nid' in data) and data['nid']:
-        existingDataset = dkanhandler.getDatasetDetails(data['nid'])
-    else:
-        existingDataset = dkanhandler.find(data['name'])
-    print()
-    print('-----------------------------------------------------')
-    print(data['name'], existingDataset['nid'] if 'nid' in existingDataset else ' => NEW')
-    if existingDataset:
-        nid = existingDataset['nid']
-        dkanhandler.update(nid, data)
-    else:
-        nid = dkanhandler.create(data)
+    try:
+        if ('nid' in data) and data['nid']:
+            existingDataset = dkanhandler.getDatasetDetails(data['nid'])
+        else:
+            existingDataset = dkanhandler.find(data['name'])
+        print()
+        print('-----------------------------------------------------')
+        print(data['name'], existingDataset['nid'] if existingDataset and 'nid' in existingDataset else ' => NEW')
+        if existingDataset:
+            nid = existingDataset['nid']
+            dkanhandler.update(nid, data)
+        else:
+            nid = dkanhandler.create(data)
 
-    dataset = dkanhandler.getDatasetDetails(nid)
-    # print("RETRIEVED", dataset)
-    updateResources(dataset, resources)
-    datasets.append(nid)
-    # print(data)
-    # print(resources)
-
+        dataset = dkanhandler.getDatasetDetails(nid)
+        # print("RETRIEVED", dataset)
+        updateResources(dataset, resources)
+        datasets.append(nid)
+    except:
+        print("data", data)
+        print("resources", resources)
+        print("existingDataset", existingDataset)
+        print("Unexpected error:", sys.exc_info())
+        raise
 
 def updateResources(dataset, resources):
     if (('field_resources' in dataset) and ('und' in dataset['field_resources'])):
@@ -65,7 +70,12 @@ with closing(requests.get(url, stream=True)) as r:
         if row[1]:
             data[row[1]] = row[3]
         if row[2]:
-            resources.append({"type": row[2], "url": row[3], "title": row[4] if len(row) > 4 else ''})
+            resources.append({
+                "type": row[2],
+                "url": row[3],
+                "title": row[4] if len(row) > 4 else '',
+                "body": row[5] if len(row) > 5 else ''
+            })
 
 processDataset(data, resources)
 
