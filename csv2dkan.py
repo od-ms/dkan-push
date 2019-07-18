@@ -21,6 +21,16 @@ def processDataset(data, resources):
     global dkanhandler, datasets, onlyImportTheseIds
     if (not onlyImportTheseIds) or (onlyImportTheseIds and (data['id'] in onlyImportTheseIds)):
         try:
+            # Special feature: download external resources into a field.
+            # E.g. this can be used for "desc-external" => if this contains a url then "desc" is filled with the content from that url.
+            for hashkey in data:
+                if hashkey[-9:] == "-external":
+                    fieldName = hashkey[0:-9]
+                    downloadUrl = data[hashkey]
+                    print("Downloading external content for '" + fieldName + "':", downloadUrl)
+                    r = requests.get(downloadUrl)
+                    data[fieldName] = (data[fieldName] if fieldName in data else '') + r.text
+
             if ('nid' in data) and data['nid']:
                 existingDataset = dkanhandler.getDatasetDetails(data['nid'])
             else:
@@ -74,14 +84,7 @@ with closing(requests.get(url, stream=True)) as r:
             data = {"id": row[0]}
             resources = []
         if row[1]:
-            if row[1][-9:] == "-external":
-                fieldName = row[1][0:-9]
-                downloadUrl = row[3]
-                print("Downloading external content for '" + fieldName + "':", downloadUrl)
-                r = requests.get(downloadUrl)
-                data[fieldName] = (data[fieldName] if fieldName in data else '') + r.text
-            else:
-                data[row[1]] = row[3]
+            data[row[1]] = row[3]
         if row[2]:
             resources.append({
                 "type": row[2],
