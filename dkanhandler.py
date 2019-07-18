@@ -1,6 +1,6 @@
 from dkan.client import DatasetAPI
 
-
+# Default data for DATASETS
 def getDkanData(data):
     if not(data['name'] and data['desc'] and data['tags']):
         raise Exception('Missing data entry', data)
@@ -8,14 +8,32 @@ def getDkanData(data):
     dkanData = {
         "type": "dataset",
         "title": data['name'],
-        "body": {"und": [{"value": data['desc']}]},
+        "body": {"und": [{
+            "value": data['desc'],
+            "format": "full_html"  # plain_text, full_html, ...
+        }]},
         "field_author": {"und": [{"value": "Stadt Münster"}]},
+        "og_group_ref": {"und": [40612]},
         "field_license": {"und": {"select": "Datenlizenz Deutschland – Namensnennung – Version 2.0"}},
         "field_spatial_geographical_cover": {"und": [{"value": "Münster"}]},
         "field_granularity": {"und": [{"value": "longitude/latitude"}]},
         "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.5290679931641,51.89293553285],[7.5290679931641,52.007625513725],[7.7350616455078,52.007625513725],[7.7350616455078,51.89293553285]]]},\"properties\":[]}]}"}},
-        "field_tags": {"und": {"value_field": ("\"\"" + data['tags'] + "\"\"")}},
+        "field_tags": {"und": {"value_field": ("\"\"\"" + data['tags'] + "\"\"\"")}},
     }
+
+    groupData = {
+        "Stadtwerke Münster": {
+            "field_author": {"und": [{"value": "Stadtwerke Münster"}]},
+            "og_group_ref": {"und": [40845]},
+            "field_license": {"und": {"select": "License Not Specified"}}
+        }
+    }
+    if ("group" in data) and data["group"]:
+        if not data["group"] in groupData:
+            raise Exception("groupData not found for group. Please define the following group in dkanhandler.py:", data["group"])
+        dkanData.update(groupData[data["group"]])
+
+
     if "musterds" in data:
         additional_fields = [
             {"first": "Kategorie", "second": data['musterds'], "_weight": 0},
@@ -72,7 +90,7 @@ def getDatasetDetails(nid):
 
     return r.json()
 
-
+# Base data for RESOURCE URLS
 def getResourceDkanData(resource, nid, title):
     rFormat = resource['type']
     if (rFormat[0:3] == "WFS"):  # omit WFS Version in type
