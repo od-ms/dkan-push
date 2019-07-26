@@ -25,14 +25,22 @@ def getDkanData(data):
         "Stadtwerke Münster": {
             "field_author": {"und": [{"value": "Stadtwerke Münster"}]},
             "og_group_ref": {"und": [40845]},
-            "field_license": {"und": {"select": "License Not Specified"}}
+            "field_license": {"und": {"select": "notspecified"}}
+        },
+        "Abfallwirtschaftsbetriebe Münster (AWM)": {
+            "field_author": {"und": [{"value": "Abfallwirtschaftsbetriebe Münster (AWM)"}]},
+            "og_group_ref": {"und": [40848]},
+        },
+        "Stadtbücherei Münster": {
+            "field_author": {"und": [{"value": "Stadtbücherei Münster"}]},
+            "og_group_ref": {"und": [40849]},
         }
     }
+
     if ("group" in data) and data["group"]:
         if not data["group"] in groupData:
             raise Exception("groupData not found for group. Please define the following group in dkanhandler.py:", data["group"])
         dkanData.update(groupData[data["group"]])
-
 
     if "musterds" in data:
         additional_fields = [
@@ -96,6 +104,9 @@ def getResourceDkanData(resource, nid, title):
     if (rFormat[0:3] == "WFS"):  # omit WFS Version in type
         rFormat = "WFS"
 
+    if (rFormat[0:3] == "WMS"):  # omit WMS Details in type
+        rFormat = "WMS"
+
     rTitle = title + " - " + resource['type']
     if ('title' in resource) and resource['title']:
         rTitle = resource['title']
@@ -114,7 +125,7 @@ def getResourceDkanData(resource, nid, title):
             "value": resource['body'] if ("body" in resource) and resource['body'] else "",
             "format": "plain_text"
         }]},
-        "field_format": {"und": {"textfield": rFormat}}
+        "field_format": {"und": {"textfield": rFormat.lower()}}
     }
     return rData
 
