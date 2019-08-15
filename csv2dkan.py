@@ -1,3 +1,20 @@
+# CSV2DKAN
+#
+# First argument can be comma separated list of dataset-identifiers.
+# Second arguments can "--force" to force update of the resources.
+#
+# Usage examples:
+#
+# python3 csv2dkan.py
+#     (Download the csv file in config file and create or update all datasets)
+#
+# python3 csv2dkan.py h01 --force
+#     (Force the update of a single dataset with id "h01" and it's resources)
+#
+# python3 csv2dkan.py h01,b23,x09
+#     (Update or create only three specific datasets,
+#     and update resources only if the resource title has changed (=default behavior))
+
 from contextlib import closing
 import requests
 import csv
@@ -12,13 +29,17 @@ print("Data url:", url)
 dkanhandler.connect(cfg)
 
 onlyImportTheseIds = ""
+importOptions = ""
 if len(sys.argv) > 1:
-    onlyImportTheseIds = str(sys.argv[1:])
+    onlyImportTheseIds = str(sys.argv[1])
     print("Only importing the following ids: ", onlyImportTheseIds)
+if len(sys.argv) > 2:
+    importOptions = str(sys.argv[2:])
+    print("Import options: ", importOptions)
 
 
 def processDataset(data, resources):
-    global dkanhandler, datasets, onlyImportTheseIds
+    global dkanhandler, datasets, onlyImportTheseIds, importOptions
     if (not onlyImportTheseIds) or (onlyImportTheseIds and (data['id'] in onlyImportTheseIds)):
         try:
             # Special feature: download external resources into a field.
@@ -56,10 +77,11 @@ def processDataset(data, resources):
             raise
 
 def updateResources(dataset, resources):
+    global importOptions
     if (('field_resources' in dataset) and ('und' in dataset['field_resources'])):
         existingResources = dataset['field_resources']['und']
         if len(existingResources):
-            dkanhandler.updateResources(resources, existingResources, dataset)
+            dkanhandler.updateResources(resources, existingResources, dataset, ('force' in importOptions))
     else:
         # Create all resources
         for resource in resources:
