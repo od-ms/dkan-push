@@ -1,3 +1,6 @@
+import os
+import hashlib
+import requests
 from dkan.client import DatasetAPI
 
 # Default data for DATASETS
@@ -5,11 +8,16 @@ def getDkanData(data):
     if not(data['name'] and data['desc'] and data['tags']):
         raise Exception('Missing data entry', data)
 
+    # if description does not contain html, then add html linebreaks
+    description = data['desc']
+    if ('\n' in description) and not ('<' in description):
+        description = description.replace('\n', '<br />')
+
     dkanData = {
         "type": "dataset",
         "title": data['name'],
         "body": {"und": [{
-            "value": data['desc'],
+            "value": description,
             "format": "full_html"  # plain_text, full_html, ...
         }]},
         "field_author": {"und": [{"value": "Stadt Münster"}]},
@@ -27,13 +35,9 @@ def getDkanData(data):
             "og_group_ref": {"und": [40845]},
             "field_license": {"und": {"select": "notspecified"}}
         },
-        "Abfallwirtschaftsbetriebe Münster (AWM)": {
-            "field_author": {"und": [{"value": "Abfallwirtschaftsbetriebe Münster (AWM)"}]},
-            "og_group_ref": {"und": [40848]},
-        },
-        "Stadtbücherei Münster": {
-            "field_author": {"und": [{"value": "Stadtbücherei Münster"}]},
-            "og_group_ref": {"und": [40849]},
+        "Leihleeze": {
+            "field_author": {"und": [{"value": "Leihleeze.de"}]},
+            "og_group_ref": {"und": [40865]},
         }
     }
 
@@ -45,10 +49,12 @@ def getDkanData(data):
     if "musterds" in data:
         additional_fields = [
             {"first": "Kategorie", "second": data['musterds'], "_weight": 0},
-            {"first": "Identifier", "second": data['id'], "_weight": 1}
+            {"first": "Kennziffer", "second": data['id'], "_weight": 1}
         ]
         if "Koordinatenreferenzsystem" in data:
             additional_fields.append({"first": "Koordinatenreferenzsystem", "second": data['Koordinatenreferenzsystem'], "_weight": 2})
+        if "Quelle" in data:
+            additional_fields.append({"first": "Quelle", "second": data['Quelle'], "_weight": 3})
 
         dkanData["field_additional_info"] = {"und": additional_fields}
 
@@ -100,12 +106,18 @@ def getDatasetDetails(nid):
 
 # Base data for RESOURCE URLS
 def getResourceDkanData(resource, nid, title):
+    isUpload = False
+
     rFormat = resource['type']
     if (rFormat[0:3] == "WFS"):  # omit WFS Version in type
         rFormat = "WFS"
 
     if (rFormat[0:3] == "WMS"):  # omit WMS Details in type
         rFormat = "WMS"
+
+    if (rFormat[-7:] == '-upload'):
+        resource['type'] = rFormat = rFormat[0:-7]
+        isUpload = True
 
     rTitle = title + " - " + resource['type']
     if ('title' in resource) and resource['title']:
@@ -115,27 +127,39 @@ def getResourceDkanData(resource, nid, title):
         "type": "resource",
         "field_dataset_ref": {"und": [{"target_id": "Name (" + nid + ")"}]},
         "title": rTitle,
-        "field_link_api": {"und": [{"url": resource['url']}]},
-        "field_link_remote_file": {"und": [{
-            "filefield_dkan_remotefile": {"url": ""},
-            "fid": 0,
-            "display": 1
-        }]},
         "body": {"und": [{
             "value": resource['body'] if ("body" in resource) and resource['body'] else "",
             "format": "plain_text"
         }]},
-        "field_format": {"und": {"textfield": rFormat.lower()}}
+        "field_format": {"und": {"textfield": rFormat.lower()}},
+        "field_link_remote_file": {"und": [{
+            "filefield_dkan_remotefile": {"url": ""},
+            "fid": 0,
+            "display": 1
+        }]}
     }
+    if isUpload:
+        rData.update({
+            "upload_file": resource['url'],
+            "field_link_api": {"und": [{"url": ""}]},
+        })
+    else:
+        rData.update({
+            "field_link_api": {"und": [{"url": resource['url']}]},
+        })
+
     return rData
 
 
 def createResource(resource, nid, title):
     global api
     print("[create]", resource)
-    r = api.node('create', data=getResourceDkanData(resource, nid, title))
-    print(r, r.json())
-
+    data = getResourceDkanData(resource, nid, title)
+    r = api.node('create', data=data)
+    resourceResponse = r.json()
+    print(r, resourceResponse)
+    raise Exception("need to find out resource node id here")
+    handleFileUpload(data, nid)
 
 def updateResource(data, nodeId):
     global api
@@ -143,9 +167,33 @@ def updateResource(data, nodeId):
     r = api.node('update', node_id=nodeId, data=data)
     if r.status_code != 200:
         raise Exception('Error during update:', r, r.json())
+    handleFileUpload(data, nodeId)
 
+def handleFileUpload(data, nodeId):
+    global api
 
-def updateResources(resources, existingResources, dataset):
+    if "upload_file" in data:
+        # download remote content
+        downloadUrl = data["upload_file"]
+        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.', 'temp-files',
+            hashlib.md5(downloadUrl.encode('utf-8')).hexdigest()) + '.csv'
+        print(nodeId, "[file-upload]", downloadUrl)
+        print("    Temp file:", filename)
+        del data['upload_file']
+        r = requests.get(downloadUrl)
+        if r.status_code != 200:
+            raise Exception('Error during download')
+
+        # save content to temp file
+        f = open(filename, "w")
+        f.write(r.text)
+        f.close()
+
+        # attach temp file to resource
+        a = api.attach_file_to_node(filename, nodeId, 'field_upload')
+        print(a.status_code, a. text        )
+
+def updateResources(newResources, existingResources, dataset, forceUpdate):
     print("CHECKING RESOURCES")
     for existingResource in existingResources:
 
@@ -158,17 +206,24 @@ def updateResources(resources, existingResources, dataset):
             rUrl = resourceData['field_link_api']['und'][0]['url']
         elif 'und' in resourceData['field_link_remote_file']:
             rUrl = resourceData['field_link_remote_file']['und'][0]['uri']
+        elif 'und' in resourceData['field_upload']:
+            rUrl = resourceData['field_upload']['und'][0]['filename']
+            print("WARNING -- uploaded file .. update does not work yet")
+            raise Exception('todo this does not work', resourceData)
         else:
             raise Exception('Unknown resource: no url or uri', resourceData)
 
-        el = [x for x in resources if x['url'] == rUrl]
+        # check if the existing resource url also is in the new resource urls
+        el = [x for x in newResources if x['url'] == rUrl]
         if el:
-            # Found url => remove it from the resources that will be created
-            resources = [x for x in resources if x['url'] != rUrl]
+            # Found url => That means this is an update
 
-            # Check if resource title updated
+            # remove element from the resources that will be created
+            newResources = [x for x in newResources if x['url'] != rUrl]
+
+            # Only update if resource title has changed
             newData = getResourceDkanData(el[0], dataset['nid'], dataset['title'])
-            if newData['title'] != resourceData['title']:
+            if (newData['title'] != resourceData['title']) or forceUpdate:
                 updateResource(newData, existingResource['target_id'])
             else:
                 print("[no-change]", rUrl)
@@ -179,6 +234,6 @@ def updateResources(resources, existingResources, dataset):
             print (op.status_code, op.text)
 
     # Create new resources
-    for resource in resources:
+    for resource in newResources:
         createResource(resource, dataset['nid'], dataset['title'])
 
