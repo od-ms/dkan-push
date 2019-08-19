@@ -1,16 +1,21 @@
+"""Module to handle DKAN API calls"""
+import re
 import os
 import hashlib
 import requests
 from dkan.client import DatasetAPI
 
-# Default data for DATASETS
+api = None
+
+
 def getDkanData(data):
+    """Generate default data for DKAN Datasets"""
     if not(data['name'] and data['desc'] and data['tags']):
         raise Exception('Missing data entry', data)
 
     # if description does not contain html, then add html linebreaks
     description = data['desc']
-    if ('\n' in description) and not ('<' in description):
+    if ('\n' in description) and '<' not in description:
         description = description.replace('\n', '<br />')
 
     dkanData = {
@@ -47,16 +52,19 @@ def getDkanData(data):
         dkanData.update(groupData[data["group"]])
 
     if "musterds" in data:
-        additional_fields = [
+        additionalFields = [
             {"first": "Kategorie", "second": data['musterds'], "_weight": 0},
             {"first": "Kennziffer", "second": data['id'], "_weight": 1}
         ]
+        fieldWeight = 1
         if "Koordinatenreferenzsystem" in data:
-            additional_fields.append({"first": "Koordinatenreferenzsystem", "second": data['Koordinatenreferenzsystem'], "_weight": 2})
+            fieldWeight += 1
+            additionalFields.append({"first": "Koordinatenreferenzsystem", "second": data['Koordinatenreferenzsystem'], "_weight": fieldWeight})
         if "Quelle" in data:
-            additional_fields.append({"first": "Quelle", "second": data['Quelle'], "_weight": 3})
+            fieldWeight += 1
+            additionalFields.append({"first": "Quelle", "second": data['Quelle'], "_weight": fieldWeight})
 
-        dkanData["field_additional_info"] = {"und": additional_fields}
+        dkanData["field_additional_info"] = {"und": additionalFields}
 
     return dkanData
 
@@ -90,32 +98,30 @@ def find(title):
         'parameters[title]': title
     }
     results = api.node(params=params).json()
-    if len(results):
-        return results[0]
-    else:
-        return 0
+    return results[0] if results else 0
 
 
 def getDatasetDetails(nid):
     global api
     r = api.node('retrieve', node_id=nid)
     if r.status_code == 404:
-        raise Exception('Did not find existing entry to update:', nid)
+        raise Exception('Did not find existing dkan node:', nid)
 
     return r.json()
 
-# Base data for RESOURCE URLS
+
 def getResourceDkanData(resource, nid, title):
+    """Return Base data for RESOURCE URLS"""
     isUpload = False
 
     rFormat = resource['type']
-    if (rFormat[0:3] == "WFS"):  # omit WFS Version in type
+    if rFormat[0:3] == "WFS":  # omit WFS Version in type
         rFormat = "WFS"
 
-    if (rFormat[0:3] == "WMS"):  # omit WMS Details in type
+    if rFormat[0:3] == "WMS":  # omit WMS Details in type
         rFormat = "WMS"
 
-    if (rFormat[-7:] == '-upload'):
+    if rFormat[-7:] == '-upload':
         resource['type'] = rFormat = rFormat[0:-7]
         isUpload = True
 
@@ -152,22 +158,65 @@ def getResourceDkanData(resource, nid, title):
 
 
 def createResource(resource, nid, title):
-    global api
-    print("[create]", resource)
     data = getResourceDkanData(resource, nid, title)
-    r = api.node('create', data=data)
-    resourceResponse = r.json()
-    print(r, resourceResponse)
-    raise Exception("need to find out resource node id here")
-    handleFileUpload(data, nid)
+    createResourceFromData(data)
 
-def updateResource(data, nodeId):
+
+def createResourceFromData(data):
     global api
-    print("[update]", data['title'])
-    r = api.node('update', node_id=nodeId, data=data)
+    print("[create]", data['title'])
+    r = api.node('create', data=data)
     if r.status_code != 200:
-        raise Exception('Error during update:', r, r.json())
-    handleFileUpload(data, nodeId)
+        raise Exception('Error during create resource:', r, r.text)
+    resourceResponse = r.json()
+    newResourceNodeId = resourceResponse['nid']
+    print(newResourceNodeId, "[created]")
+    handleFileUpload(data, newResourceNodeId)
+
+
+def updateResource(data, existingResource):
+    global api
+    nodeId = existingResource['nid']
+    print("[update]", nodeId, data['title'])
+    if 'upload_file' in data:
+        # There seems to be a bug in DKAN:
+        # I did not manage to update a ressource that has an uploaded  file.
+        # Always receives weird http 500 errors from server:
+        # "500 Internal Server Error : An error occurred (HY000): SQLSTATE[HY000]:
+        #     General error: 1366 Incorrect integer value: '' for column 'field_upload_grid' at row 1"
+        # So we delete and recreate if necessary:
+        removeHtml = re.compile(r'(<!--.*?-->|<[^>]*>)')
+        body1 = body2 = ""
+        if "body" in data:
+            body1 = removeHtml.sub('', data['body']['und'][0]['value'])
+        if "body" in existingResource:
+            body2 = removeHtml.sub('', existingResource['body']['und'][0]['value'])
+
+        if (data['title'] != existingResource['title']) or (body1 != body2):
+            print("[DELETE NODE AND RECREATE] (required if changes in name or description of resources with file uploads)")
+            print('newtitle:', data['title'])
+            print('oldTitle:', existingResource['title'])
+            print("newBody:", body1)
+            print("oldBody", body2)
+
+            response = api.node('delete', node_id=nodeId)
+            if response.status_code != 200:
+                print("ERROR", response, response.content)
+                raise Exception('Error during resource update:', response, response.text)
+
+            createResourceFromData(data)
+        else:
+            handleFileUpload(data, nodeId)
+    else:
+        r = api.node('update', node_id=nodeId, data=data)
+        if r.status_code != 200:
+            print("ERROR", r, r.content)
+            raise Exception('Error during resource update:', r, r.text)
+
+
+def generateUploadFilename(url):
+    return hashlib.md5(url.encode('utf-8')).hexdigest() + '.csv'
+
 
 def handleFileUpload(data, nodeId):
     global api
@@ -175,65 +224,71 @@ def handleFileUpload(data, nodeId):
     if "upload_file" in data:
         # download remote content
         downloadUrl = data["upload_file"]
-        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.', 'temp-files',
-            hashlib.md5(downloadUrl.encode('utf-8')).hexdigest()) + '.csv'
+        filename = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), '.', 'temp-files',
+            generateUploadFilename(downloadUrl))
         print(nodeId, "[file-upload]", downloadUrl)
         print("    Temp file:", filename)
         del data['upload_file']
-        r = requests.get(downloadUrl)
-        if r.status_code != 200:
+        fileContent = requests.get(downloadUrl)
+        if fileContent.status_code != 200:
             raise Exception('Error during download')
 
         # save content to temp file
-        f = open(filename, "w")
-        f.write(r.text)
-        f.close()
+        tempFile = open(filename, "w")
+        tempFile.write(fileContent.text)
+        tempFile.close()
 
         # attach temp file to resource
-        a = api.attach_file_to_node(filename, nodeId, 'field_upload')
-        print(a.status_code, a. text        )
+        aResponse = api.attach_file_to_node(filename, nodeId, 'field_upload')
+        print(aResponse.status_code, aResponse.text)
+
 
 def updateResources(newResources, existingResources, dataset, forceUpdate):
     print("CHECKING RESOURCES")
-    for existingResource in existingResources:
 
+    # add unique ids to newResources
+    for res in newResources:
+        if res['type'][-7:] == '-upload':
+            res["uniqueId"] = generateUploadFilename(res["url"])
+        else:
+            res["uniqueId"] = res["url"]
+
+    for existingResource in existingResources:
         print(existingResource['target_id'], end=' ')
         # TODO: existingResource is crap, because it's only a list of target_ids!
         # TODO: Don't use existingResource, use resourceData instead!
 
         resourceData = getDatasetDetails(existingResource['target_id'])
         if "und" in resourceData['field_link_api']:
-            rUrl = resourceData['field_link_api']['und'][0]['url']
+            uniqueId = resourceData['field_link_api']['und'][0]['url']
         elif 'und' in resourceData['field_link_remote_file']:
-            rUrl = resourceData['field_link_remote_file']['und'][0]['uri']
+            uniqueId = resourceData['field_link_remote_file']['und'][0]['uri']
         elif 'und' in resourceData['field_upload']:
-            rUrl = resourceData['field_upload']['und'][0]['filename']
-            print("WARNING -- uploaded file .. update does not work yet")
-            raise Exception('todo this does not work', resourceData)
+            uniqueId = resourceData['field_upload']['und'][0]['filename']
         else:
             raise Exception('Unknown resource: no url or uri', resourceData)
 
         # check if the existing resource url also is in the new resource urls
-        el = [x for x in newResources if x['url'] == rUrl]
+        el = [x for x in newResources if x['uniqueId'] == uniqueId]
         if el:
             # Found url => That means this is an update
 
             # remove element from the resources that will be created
-            newResources = [x for x in newResources if x['url'] != rUrl]
+            newResources = [x for x in newResources if x['uniqueId'] != uniqueId]
 
             # Only update if resource title has changed
             newData = getResourceDkanData(el[0], dataset['nid'], dataset['title'])
             if (newData['title'] != resourceData['title']) or forceUpdate:
-                updateResource(newData, existingResource['target_id'])
+                updateResource(newData, resourceData)
             else:
-                print("[no-change]", rUrl)
+                print("[no-change]", el[0]["url"])
         else:
             # This seems to be an old url that we dont want anymore => delete it
             print("[remove]", existingResource)
             op = api.node('delete', node_id=existingResource['target_id'])
-            print (op.status_code, op.text)
+            print(op.status_code, op.text)
 
     # Create new resources
     for resource in newResources:
         createResource(resource, dataset['nid'], dataset['title'])
-

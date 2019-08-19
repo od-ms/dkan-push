@@ -76,16 +76,18 @@ def processDataset(data, resources):
             print("Unexpected error:", sys.exc_info())
             raise
 
-def updateResources(dataset, resources):
+
+def updateResources(dataset, resourcesFromCsv):
     global importOptions
     if (('field_resources' in dataset) and ('und' in dataset['field_resources'])):
         existingResources = dataset['field_resources']['und']
-        if len(existingResources):
-            dkanhandler.updateResources(resources, existingResources, dataset, ('force' in importOptions))
+        if existingResources:
+            dkanhandler.updateResources(resourcesFromCsv, existingResources, dataset, ('force' in importOptions))
     else:
         # Create all resources
         for resource in resources:
             dkanhandler.createResource(resource, dataset['nid'], dataset['title'])
+
 
 datasets = []
 data = {}
