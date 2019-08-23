@@ -267,7 +267,8 @@ def updateResources(newResources, existingResources, dataset, forceUpdate):
         elif 'und' in resourceData['field_upload']:
             uniqueId = resourceData['field_upload']['und'][0]['filename']
         else:
-            raise Exception('Unknown resource: no url or uri', resourceData)
+            print("[EXISTING RESOURCE WITHOUT URL -> MAKES NO SENSE -> DELETE]")
+            uniqueId = resourceData['nid']
 
         # check if the existing resource url also is in the new resource urls
         el = [x for x in newResources if x['uniqueId'] == uniqueId]
