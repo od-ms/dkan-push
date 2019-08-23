@@ -1,21 +1,24 @@
 # CSV2DKAN
 #
-# First argument can be comma separated list of dataset-identifiers.
-# Second arguments can "--force" to force update of the resources.
+# Possible arguments:
+#     --ids=x23,y48     Import only those. Comma separated list of dataset-identifiers.
+#     --skipCount=20    Skip first 20 datasets in csv file
+#     --force           Force update of resources
 #
 # Usage examples:
 #
 # python3 csv2dkan.py
 #     (Download the csv file in config file and create or update all datasets)
 #
-# python3 csv2dkan.py h01 --force
+# python3 csv2dkan.py --ids=h01 --force
 #     (Force the update of a single dataset with id "h01" and it's resources)
 #
-# python3 csv2dkan.py h01,b23,x09
+# python3 csv2dkan.py --ids=h01,b23,x09
 #     (Update or create only three specific datasets,
 #     and update resources only if the resource title has changed (=default behavior))
 
 from contextlib import closing
+import re
 import requests
 import csv
 import codecs
@@ -28,19 +31,27 @@ print("Data url:", url)
 
 dkanhandler.connect(cfg)
 
-onlyImportTheseIds = ""
 importOptions = ""
+onlyImportTheseIds = ""
+skipSoManyDatasets = 0
 if len(sys.argv) > 1:
-    onlyImportTheseIds = str(sys.argv[1])
-    print("Only importing the following ids: ", onlyImportTheseIds)
-if len(sys.argv) > 2:
-    importOptions = str(sys.argv[2:])
-    print("Import options: ", importOptions)
+    importOptions = str(sys.argv[1:])
+    print("Import options:", importOptions)
+    match = re.search(r'-skipCount=(\d+)', importOptions)
+    if match:
+        skipSoManyDatasets = int(match.group(1))
+        print('Skipping', skipSoManyDatasets, 'Datasets.')
+
+    match = re.search(r'-ids=([-\w\d,]+)', importOptions)
+    if match:
+        onlyImportTheseIds = match.group(1)
+        print("Only importing the following ids: ", onlyImportTheseIds)
 
 
 def processDataset(data, resources):
-    global dkanhandler, datasets, onlyImportTheseIds, importOptions
-    if (not onlyImportTheseIds) or (onlyImportTheseIds and (data['id'] in onlyImportTheseIds)):
+    global dkanhandler, datasets, onlyImportTheseIds, skipSoManyDatasets, importOptions
+    skipSoManyDatasets -= 1
+    if skipSoManyDatasets < 0 and ((not onlyImportTheseIds) or (onlyImportTheseIds and (data['id'] in onlyImportTheseIds))):
         try:
             # Special feature: download external resources into a field.
             # E.g. this can be used for "desc-external" => if this contains a url then "desc" is filled with the content from that url.
@@ -110,12 +121,19 @@ with closing(requests.get(url, stream=True)) as r:
         if row[1]:
             data[row[1]] = row[3]
         if row[2]:
-            resources.append({
-                "type": row[2],
-                "url": row[3],
-                "title": row[4] if len(row) > 4 else '',
-                "body": row[5] if len(row) > 5 else ''
-            })
+            # HTML resources have nasty iframes (how is that supposed to work with DSGVO?!), instead we embed them into the description text
+            if row[2] == "html":
+                data["desc"] += ('<br /><br /><p>Zu diesem Datensatz gibt es bereits eine Visualisierung:<br /><a href="' + row[3]
+                                 + '" class="btn btn-primary data-link"><i class="fa fa-external-link"></i> '
+                                 + (row[5] if len(row) > 5 else "Datensatz-Vorschau im Browser") + '</a> '
+                                 + (row[4] if len(row) > 4 else '') + '</p>')
+            else:
+                resources.append({
+                    "type": row[2],
+                    "url": row[3],
+                    "title": row[4] if len(row) > 4 else '',
+                    "body": row[5] if len(row) > 5 else ''
+                })
 
 processDataset(data, resources)
 
