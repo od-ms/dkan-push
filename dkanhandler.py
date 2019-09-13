@@ -43,6 +43,11 @@ def getDkanData(data):
         "Leihleeze": {
             "field_author": {"und": [{"value": "Leihleeze.de"}]},
             "og_group_ref": {"und": [40865]},
+        },
+        "OSM": {
+            "field_author": {"und": [{"value": "OpenStreetMap-Mitwirkende Gruppe Münster"}]},
+            "og_group_ref": {"und": [40893]},
+            "field_license": {"und": {"select": "odc-odbl"}}
         }
     }
 
@@ -50,6 +55,11 @@ def getDkanData(data):
         if not data["group"] in groupData:
             raise Exception("groupData not found for group. Please define the following group in dkanhandler.py:", data["group"])
         dkanData.update(groupData[data["group"]])
+
+    if "homepage" in data:
+        dkanData["field_landing_page"] = {
+            "und": [{"url": data["homepage"]}]
+        }
 
     if "musterds" in data:
         additionalFields = [
@@ -126,6 +136,8 @@ def getResourceDkanData(resource, nid, title):
         isUpload = True
 
     rTitle = title + " - " + resource['type']
+    if rFormat == "HTML":
+        rTitle = title + " - " + "Vorschau"
     if ('title' in resource) and resource['title']:
         rTitle = resource['title']
 
@@ -142,12 +154,25 @@ def getResourceDkanData(resource, nid, title):
             "filefield_dkan_remotefile": {"url": ""},
             "fid": 0,
             "display": 1
-        }]}
+        }]},
+        "field_link_api": {"und": [{"url": ""}]}
     }
     if isUpload:
         rData.update({
             "upload_file": resource['url'],
-            "field_link_api": {"und": [{"url": ""}]},
+        })
+    elif rFormat == "CSV":
+        # New setting in our DKAN:
+        #   "hochladen" or "external url" => SHOW PREVIEW IFRAME
+        #   "api or website url" => dont show
+        #
+        # We want previews only for CSV, because of DSGVO
+        rData.update({
+            "field_link_remote_file": {"und": [{
+                "filefield_dkan_remotefile": {"url": resource['url']},
+                "fid": 0,
+                "display": 1
+            }]}
         })
     else:
         rData.update({

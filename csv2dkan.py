@@ -121,19 +121,12 @@ with closing(requests.get(url, stream=True)) as r:
         if row[1]:
             data[row[1]] = row[3]
         if row[2]:
-            # HTML resources have nasty iframes (how is that supposed to work with DSGVO?!), instead we embed them into the description text
-            if row[2] == "html":
-                data["desc"] += ('<br /><br /><p>Zu diesem Datensatz gibt es bereits eine Visualisierung:<br /><a href="' + row[3]
-                                 + '" class="btn btn-primary data-link"><i class="fa fa-external-link"></i> '
-                                 + (row[5] if len(row) > 5 else "Datensatz-Vorschau im Browser") + '</a> '
-                                 + (row[4] if len(row) > 4 else '') + '</p>')
-            else:
-                resources.append({
-                    "type": row[2],
-                    "url": row[3],
-                    "title": row[4] if len(row) > 4 else '',
-                    "body": row[5] if len(row) > 5 else ''
-                })
+            resources.append({
+                "type": row[2],
+                "url": row[3],
+                "title": row[4] if len(row) > 4 else '',
+                "body": row[5] if len(row) > 5 else ''
+            })
 
 processDataset(data, resources)
 
