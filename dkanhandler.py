@@ -48,7 +48,16 @@ def getDkanData(data):
             "field_author": {"und": [{"value": "OpenStreetMap-Mitwirkende Gruppe Münster"}]},
             "og_group_ref": {"und": [40893]},
             "field_license": {"und": {"select": "odc-odbl"}}
-        }
+        },
+        "Freifunk": {
+            "field_author": {"und": [{"value": "Freifunk Münsterland"}]},
+            "og_group_ref": {"und": [40983]},
+            "field_license": {"und": {"select": "Creative Commons Namensnennung 3.0 DE"}}
+        },
+        "Muensterland e.V.": {
+            "field_author": {"und": [{"value": "Münsterland e.V."}]},
+            "og_group_ref": {"und": [40988]}
+        },
     }
 
     if ("group" in data) and data["group"]:
