@@ -3,6 +3,7 @@ import re
 import os
 import hashlib
 import requests
+from pprint import pprint
 from dkan.client import DatasetAPI
 
 api = None
@@ -26,12 +27,14 @@ def getDkanData(data):
             "format": "full_html"  # plain_text, full_html, ...
         }]},
         "field_author": {"und": [{"value": "Stadt Münster"}]},
+        "field_contact_email": {"und": [{"value": "opendata@citeq.de"}]},
+        "field_contact_name": {"und": [{"value": "Open Data Koordination der Stadt Münster"}]},        
         "og_group_ref": {"und": [40612]},
         "field_license": {"und": {"select": "Datenlizenz Deutschland – Namensnennung – Version 2.0"}},
         "field_spatial_geographical_cover": {"und": [{"value": "Münster"}]},
-        "field_granularity": {"und": [{"value": "longitude/latitude"}]},
+        # "field_granularity": {"und": [{"value": "longitude/latitude"}]},
         "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.5290679931641,51.89293553285],[7.5290679931641,52.007625513725],[7.7350616455078,52.007625513725],[7.7350616455078,51.89293553285]]]},\"properties\":[]}]}"}},
-        "field_tags": {"und": {"value_field": ("\"\"\"" + data['tags'] + "\"\"\"")}},
+        "field_tags": {"und": {"value_field": ("\"\"\"" + data['tags'] + "\"\"\"")}},        
     }
 
     groupData = {
@@ -43,6 +46,7 @@ def getDkanData(data):
         "Leihleeze": {
             "field_author": {"und": [{"value": "Leihleeze.de"}]},
             "og_group_ref": {"und": [40865]},
+            "field_license": {"und": {"select": "notspecified"}}
         },
         "OSM": {
             "field_author": {"und": [{"value": "OpenStreetMap-Mitwirkende Gruppe Münster"}]},
@@ -56,7 +60,8 @@ def getDkanData(data):
         },
         "Muensterland e.V.": {
             "field_author": {"und": [{"value": "Münsterland e.V."}]},
-            "og_group_ref": {"und": [40988]}
+            "og_group_ref": {"und": [40988]},
+            "field_license": {"und": {"select": "notspecified"}}
         },
     }
 
@@ -70,20 +75,43 @@ def getDkanData(data):
             "und": [{"url": data["homepage"]}]
         }
 
-    if "musterds" in data:
-        additionalFields = [
-            {"first": "Kategorie", "second": data['musterds'], "_weight": 0},
-            {"first": "Kennziffer", "second": data['id'], "_weight": 1}
-        ]
-        fieldWeight = 1
-        if "Koordinatenreferenzsystem" in data:
-            fieldWeight += 1
-            additionalFields.append({"first": "Koordinatenreferenzsystem", "second": data['Koordinatenreferenzsystem'], "_weight": fieldWeight})
-        if "Quelle" in data:
-            fieldWeight += 1
-            additionalFields.append({"first": "Quelle", "second": data['Quelle'], "_weight": fieldWeight})
+    if "start" in data:
+        dkanData["field_temporal_coverage"] = {
+            "und": [{
+                "value": {
+                    "time": "00:00:00",
+                    "date": data["start"]  # "MM/DD/YYYY"
+                }
+            }]
+        }
 
-        dkanData["field_additional_info"] = {"und": additionalFields}
+    if "end" in data:
+        # field_temporal_coverage%5Bund%5D%5B0%5D%5Bshow_todate%5D: 1
+        # field_temporal_coverage%5Bund%5D%5B0%5D%5Bvalue2%5D%5Bdate%5D: 11%2F13%2F2019
+        # field_temporal_coverage%5Bund%5D%5B0%5D%5Bvalue2%5D%5Btime%5D: 00%3A00%3A00
+        print("ENDDATE NOT IMPLEMENTED")
+
+    if "frequency" in data:
+        dkanData["field_frequency"] = {
+            "und": [{"value": data["frequency"]}]
+        }
+
+    fieldWeight = 0
+    additionalFields = [
+        {"first": "Kennziffer", "second": data['id'], "_weight": fieldWeight}
+    ]
+
+    if "musterds" in data:
+        fieldWeight += 1
+        additionalFields.append({"first": "Kategorie", "second": data['musterds'], "_weight": fieldWeight})
+    if "Koordinatenreferenzsystem" in data:
+        fieldWeight += 1
+        additionalFields.append({"first": "Koordinatenreferenzsystem", "second": data['Koordinatenreferenzsystem'], "_weight": fieldWeight})
+    if "Quelle" in data:
+        fieldWeight += 1
+        additionalFields.append({"first": "Quelle", "second": data['Quelle'], "_weight": fieldWeight})
+
+    dkanData["field_additional_info"] = {"und": additionalFields}
 
     return dkanData
 
@@ -223,7 +251,7 @@ def updateResource(data, existingResource):
         body1 = body2 = ""
         if "body" in data:
             body1 = removeHtml.sub('', data['body']['und'][0]['value'])
-        if "body" in existingResource:
+        if ("body" in existingResource) and ("und" in existingResource["body"]):
             body2 = removeHtml.sub('', existingResource['body']['und'][0]['value'])
 
         if (data['title'] != existingResource['title']) or (body1 != body2):
