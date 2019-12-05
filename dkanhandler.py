@@ -63,6 +63,11 @@ def getDkanData(data):
             "og_group_ref": {"und": [40988]},
             "field_license": {"und": {"select": "notspecified"}}
         },
+        "CodeForMünster": {
+            "field_author": {"und": [{"value": "CodeForMünster"}]},
+            "og_group_ref": {"und": [41103]},
+            "field_license": {"und": {"select": "cc-zero"}}
+        },
     }
 
     if ("group" in data) and data["group"]:
