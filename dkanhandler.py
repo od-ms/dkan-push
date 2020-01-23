@@ -68,6 +68,13 @@ def getDkanData(data):
             "og_group_ref": {"und": [41103]},
             "field_license": {"und": {"select": "cc-zero"}}
         },
+        "FMO": {
+            "field_author": {"und": [{"value": "Flughafen Münster/Osnabrück"}]},
+            "og_group_ref": {"und": [40944]}, # <- TODO: ID AUF DEM TESTSYSTEM!
+            "field_license": {"und": {"select": "notspecified"}},
+            "field_spatial_geographical_cover": {"und": [{"value": "Greven"}]},
+            "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.6638221740723,52.118963953427], [7.6638221740723,52.140461224899], [7.7046775817871,52.140461224899], [7.7046775817871,52.118963953427]]]},\"properties\":[]}]}"}},
+        },
     }
 
     if ("group" in data) and data["group"]:
@@ -98,7 +105,7 @@ def getDkanData(data):
 
     if "frequency" in data:
         dkanData["field_frequency"] = {
-            "und": [{"value": data["frequency"]}]
+            "und": data["frequency"]
         }
 
     fieldWeight = 0
