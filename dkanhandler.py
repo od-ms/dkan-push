@@ -68,6 +68,11 @@ def getDkanData(data):
             "og_group_ref": {"und": [41103]},
             "field_license": {"und": {"select": "cc-zero"}}
         },
+        "OpenSenseMap": {
+            "field_author": {"und": [{"value": "openSenseMap"}]},
+            "og_group_ref": {"und": [41134]},
+            "field_license": {"und": {"select": "odc-pddl"}} # Public Domain Dedication and Licesce 1.0
+        },
         "FMO": {
             "field_author": {"und": [{"value": "Flughafen Münster/Osnabrück"}]},
             "og_group_ref": {"und": [40944]}, # <- TODO: ID AUF DEM TESTSYSTEM!
