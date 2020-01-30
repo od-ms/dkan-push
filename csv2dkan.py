@@ -19,12 +19,12 @@
 
 from contextlib import closing
 import re
-import requests
 import csv
+import sys
 import codecs
+import requests
 import dkanhandler
 import config as cfg
-import sys
 
 url = cfg.csv_url
 print("Data url:", url)
@@ -49,6 +49,7 @@ if len(sys.argv) > 1:
 
 
 def processDataset(data, resources):
+    """Create a DKAN dataset entry"""
     global dkanhandler, datasets, onlyImportTheseIds, skipSoManyDatasets, importOptions
     skipSoManyDatasets -= 1
     if skipSoManyDatasets < 0 and ((not onlyImportTheseIds) or (onlyImportTheseIds and (data['id'] in onlyImportTheseIds))):
