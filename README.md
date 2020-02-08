@@ -1,7 +1,11 @@
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/od-ms/dkan-push) 
+# DKAN SCRIPTS
 
+# 1. CREATE DKAN CONTENT STATISTIC
 
-# CSV2DKAN
+    python3 dkan-analyse.py
+
+# 2. CSV2DKAN
 
 Automatically imports CSV file content into DKAN instance.
 
