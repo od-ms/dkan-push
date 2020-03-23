@@ -80,6 +80,12 @@ def getDkanData(data):
             "field_spatial_geographical_cover": {"und": [{"value": "Greven"}]},
             "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.6638221740723,52.118963953427], [7.6638221740723,52.140461224899], [7.7046775817871,52.140461224899], [7.7046775817871,52.118963953427]]]},\"properties\":[]}]}"}},
         },
+        "Bezirksregierung": {
+            "field_author": {"und": [{"value": "Bezirksregierung Münster"}]},
+            "og_group_ref": {"und": [41178]},
+            "field_spatial_geographical_cover": {"und": [{"value": "Regierungsbezirk Münster"}]},
+            "field_license": {"und": {"select": "notspecified"}}
+        },
     }
 
     if ("group" in data) and data["group"]:
