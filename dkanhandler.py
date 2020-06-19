@@ -86,6 +86,10 @@ def getDkanData(data):
             "field_spatial_geographical_cover": {"und": [{"value": "Regierungsbezirk Münster"}]},
             "field_license": {"und": {"select": "notspecified"}}
         },
+        "NRW": {
+            "field_author": {"und": [{"value": ""}]},
+            "og_group_ref": {"und": [41209]}
+        }
     }
 
     if ("group" in data) and data["group"]:
