@@ -30,11 +30,24 @@ def getDkanData(data):
         "field_contact_email": {"und": [{"value": "opendata@citeq.de"}]},
         "field_contact_name": {"und": [{"value": "Open Data Koordination der Stadt Münster"}]},        
         "og_group_ref": {"und": [40612]},
-        "field_license": {"und": {"select": "Datenlizenz Deutschland – Namensnennung – Version 2.0"}},
         "field_spatial_geographical_cover": {"und": [{"value": "Münster"}]},
         # "field_granularity": {"und": [{"value": "longitude/latitude"}]},
-        "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.5290679931641,51.89293553285],[7.5290679931641,52.007625513725],[7.7350616455078,52.007625513725],[7.7350616455078,51.89293553285]]]},\"properties\":[]}]}"}},
-        "field_tags": {"und": {"value_field": ("\"\"\"" + data['tags'] + "\"\"\"")}},        
+
+        # No longer working (2020-09-22)
+        # "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.5290679931641,51.89293553285],[7.5290679931641,52.007625513725],[7.7350616455078,52.007625513725],[7.7350616455078,51.89293553285]]]},\"properties\":[]}]}"}},
+        # "field_tags": {"und": {"value_field": ("\"\"\"" + data['tags'] + "\"\"\"")}},        
+        # "field_license": {"und": {"select": "Datenlizenz Deutschland Namensnennung 2.0"}},
+        # "field_license": {"und": [{"select": "Datenlizenz+Deutschland+–+Namensnennung+–+Version+2.0"}]},
+
+        # working example for license (2020-09-22) 
+            # valid field values: cc-zero, notspecified
+        "field_license": {"und": [{"value": "notspecified"}]},
+
+        # working example for spatial (2020-09-22)
+        "field_spatial":{"und":[{"wkt":"POLYGON ((7.5290679931641 51.89293553285, 7.5290679931641 52.007625513725, 7.7350616455078 52.007625513725, 7.7350616455078 51.89293553285))","geo_type":"polygon","lat":"51.9503","lon":"7.63206","left":"7.52907","top":"52.0076","right":"7.73506","bottom":"51.8929","srid":null,"accuracy":null,"source":null}]},
+
+        # working example for tags (2020-09-22):
+        "field_tags":{"und": [{"tid": "50"}, {"tid": "53"}] }
     }
 
     groupData = {
@@ -154,7 +167,7 @@ def create(data):
     global api
     print("Creating", data['name'])
     res = api.node('create', data=getDkanData(data))
-    print("result", res.json())
+    print("result", res.text)
     return res.json()['nid']
 
 
