@@ -29,9 +29,12 @@ def getDkanData(data):
         "field_author": {"und": [{"value": "Stadt Münster"}]},
         "field_contact_email": {"und": [{"value": "opendata@citeq.de"}]},
         "field_contact_name": {"und": [{"value": "Open Data Koordination der Stadt Münster"}]},        
-        "og_group_ref": {"und": [40612]},
+        "og_group_ref": {"und": [{"target_id": 40612}]},
         "field_spatial_geographical_cover": {"und": [{"value": "Münster"}]},
         # "field_granularity": {"und": [{"value": "longitude/latitude"}]},
+
+        # list of api fields in dkan dokumentation: 
+        # https://github.com/GetDKAN/dkan/blob/7.x-1.x/modules/dkan/dkan_dataset/modules/dkan_dataset_content_types/dkan_dataset_content_types.features.field_base.inc
 
         # No longer working (2020-09-22)
         # "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.5290679931641,51.89293553285],[7.5290679931641,52.007625513725],[7.7350616455078,52.007625513725],[7.7350616455078,51.89293553285]]]},\"properties\":[]}]}"}},
@@ -40,17 +43,26 @@ def getDkanData(data):
         # "field_license": {"und": [{"select": "Datenlizenz+Deutschland+–+Namensnennung+–+Version+2.0"}]},
 
         # working example for license (2020-09-22) 
-            # valid field values: cc-zero, notspecified
-        "field_license": {"und": [{"value": "notspecified"}]},
+        # Valid values (confirmed): cc-zero, notspecified, cc-by
+        # BUT => they will be added to field "custom license"..?
+        # doesnt work: dL-de, dl-de/2.0
+        # example: https://opendata.stadt-muenster.de/api/dataset/node/41344.json
+        # LICENSE list: https://github.com/GetDKAN/dkan/blob/7.x-1.x/modules/dkan/dkan_dataset/modules/dkan_dataset_content_types/dkan_dataset_content_types.license_field.inc#L64
+        "field_license": {"und": [{
+            "value": "cc-by"
+            # DOESNT HELP: "safe_value": "cc-zeroo" #"Datenlizenz Deutschland – Namensnennung – Version 2.0"
+        }]},
 
         # working example for spatial (2020-09-22)
-        "field_spatial":{"und":[{"wkt":"POLYGON ((7.5290679931641 51.89293553285, 7.5290679931641 52.007625513725, 7.7350616455078 52.007625513725, 7.7350616455078 51.89293553285))","geo_type":"polygon","lat":"51.9503","lon":"7.63206","left":"7.52907","top":"52.0076","right":"7.73506","bottom":"51.8929","srid":null,"accuracy":null,"source":null}]},
+        "field_spatial":{"und":[{"wkt":"POLYGON ((7.5290679931641 51.89293553285, 7.5290679931641 52.007625513725, 7.7350616455078 52.007625513725, 7.7350616455078 51.89293553285))","geo_type":"polygon","lat":"51.9503","lon":"7.63206","left":"7.52907","top":"52.0076","right":"7.73506","bottom":"51.8929","srid":"","accuracy":"","source":""}]},
 
         # working example for tags (2020-09-22):
-        "field_tags":{"und": [{"tid": "50"}, {"tid": "53"}] }
+        # find tags ids on this page: https://opendata.stadt-muenster.de/admin/structure/taxonomy/tags
+        "field_tags":{"und": [{"tid": data['tags']}] }
     }
 
     groupData = {
+
         "Stadtwerke Münster": {
             "field_author": {"und": [{"value": "Stadtwerke Münster"}]},
             "og_group_ref": {"und": [40845]},
@@ -201,6 +213,7 @@ def getResourceDkanData(resource, nid, title):
     """Return Base data for RESOURCE URLS"""
     isUpload = False
 
+
     rFormat = resource['type']
     if rFormat[0:3] == "WFS":  # omit WFS Version in type
         rFormat = "WFS"
@@ -212,21 +225,37 @@ def getResourceDkanData(resource, nid, title):
         resource['type'] = rFormat = rFormat[0:-7]
         isUpload = True
 
+
+    # Resource FORMAT ID LIST: https://opendata.stadt-muenster.de/admin/structure/taxonomy/format
+    # TODO: we should probably read this list from somewhere, as it can be different on every portal
+    # BAAD it seems there is no API endpoint in DKAN to get this list
+    formatLookup = {
+        "csv": 69,
+        "data": 70,
+        "pdf": 74,
+        "shape": 160,
+        "wfs": 159,
+        "xlsx": 169
+    }
+    lowerFormat = rFormat.lower()
+    formatId = formatLookup[lowerFormat] if (lowerFormat in formatLookup) else 70
+
     rTitle = title + " - " + resource['type']
     if rFormat == "HTML":
         rTitle = title + " - " + "Vorschau"
     if ('title' in resource) and resource['title']:
         rTitle = resource['title']
 
+
     rData = {
         "type": "resource",
-        "field_dataset_ref": {"und": [{"target_id": "Name (" + nid + ")"}]},
+        "field_dataset_ref": {"und": [{"target_id": nid}]},
         "title": rTitle,
         "body": {"und": [{
             "value": resource['body'] if ("body" in resource) and resource['body'] else "",
             "format": "plain_text"
         }]},
-        "field_format": {"und": {"textfield": rFormat.lower()}},
+        "field_format": {"und": [{"tid": formatId}]},
         "field_link_remote_file": {"und": [{
             "filefield_dkan_remotefile": {"url": ""},
             "fid": 0,
@@ -238,7 +267,8 @@ def getResourceDkanData(resource, nid, title):
         rData.update({
             "upload_file": resource['url'],
         })
-    elif rFormat == "CSV":
+    elif rFormat == "REMOVEME---CSV":
+        # TODO: Something is wrong here, fix it
         # New setting in our DKAN:
         #   "hochladen" or "external url" => SHOW PREVIEW IFRAME
         #   "api or website url" => dont show
