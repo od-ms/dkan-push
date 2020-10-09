@@ -19,6 +19,9 @@ def getDkanData(data):
     if ('\n' in description) and '<' not in description:
         description = description.replace('\n', '<br />')
 
+    if (not data['tags'].isnumeric()):
+        raise Exception('Aufgrund DKAN API Änderungen müssen Tags derzeit als IDs angegeben werden', data)
+
     dkanData = {
         "type": "dataset",
         "title": data['name'],
