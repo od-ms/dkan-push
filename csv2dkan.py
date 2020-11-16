@@ -21,6 +21,7 @@ from contextlib import closing
 import re
 import csv
 import sys
+import json
 import codecs
 import requests
 import dkanhandler
@@ -82,7 +83,7 @@ def processDataset(data, resources):
             updateResources(dataset, resources)
             datasets.append(nid)
         except:
-            print("data", data)
+            print("data", json.dumps(data))
             print("resources", resources)
             print("existingDataset", existingDataset)
             print("Unexpected error:", sys.exc_info())

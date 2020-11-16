@@ -117,7 +117,12 @@ def getDkanData(data):
         "NRW": {
             "field_author": {"und": [{"value": ""}]},
             "og_group_ref": {"und": [41209]}
-        }
+        },
+        "K3 Stadtführungen": {
+            "field_author": {"und": [{"value": "K3 Stadtführungen"}]},
+            "og_group_ref": {"und": [41362]},
+            "field_license": {"und": {"select": "Creative Commons Namensnennung 3.0 DE"}}
+        },        
     }
 
     if ("group" in data) and data["group"]:
