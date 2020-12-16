@@ -31,21 +31,21 @@ def getDkanData(data):
         }]},
         "field_author": {"und": [{"value": "Stadt Münster"}]},
         "field_contact_email": {"und": [{"value": "opendata@citeq.de"}]},
-        "field_contact_name": {"und": [{"value": "Open Data Koordination der Stadt Münster"}]},        
+        "field_contact_name": {"und": [{"value": "Open Data Koordination der Stadt Münster"}]},
         "og_group_ref": {"und": [{"target_id": 40612}]},
         "field_spatial_geographical_cover": {"und": [{"value": "Münster"}]},
         # "field_granularity": {"und": [{"value": "longitude/latitude"}]},
 
-        # list of api fields in dkan dokumentation: 
+        # list of api fields in dkan dokumentation:
         # https://github.com/GetDKAN/dkan/blob/7.x-1.x/modules/dkan/dkan_dataset/modules/dkan_dataset_content_types/dkan_dataset_content_types.features.field_base.inc
 
         # No longer working (2020-09-22)
         # "field_spatial": {"und": {"master_column": "wkt", "wkt": "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[7.5290679931641,51.89293553285],[7.5290679931641,52.007625513725],[7.7350616455078,52.007625513725],[7.7350616455078,51.89293553285]]]},\"properties\":[]}]}"}},
-        # "field_tags": {"und": {"value_field": ("\"\"\"" + data['tags'] + "\"\"\"")}},        
+        # "field_tags": {"und": {"value_field": ("\"\"\"" + data['tags'] + "\"\"\"")}},
         # "field_license": {"und": {"select": "Datenlizenz Deutschland Namensnennung 2.0"}},
         # "field_license": {"und": [{"select": "Datenlizenz+Deutschland+–+Namensnennung+–+Version+2.0"}]},
 
-        # working example for license (2020-09-22) 
+        # working example for license (2020-09-22)
         # Valid values (confirmed): cc-zero, notspecified, cc-by
         # BUT => they will be added to field "custom license"..?
         # doesnt work: dL-de, dl-de/2.0
@@ -91,6 +91,16 @@ def getDkanData(data):
             "og_group_ref": {"und": [40988]},
             "field_license": {"und": {"select": "notspecified"}}
         },
+        "Wirtschaftsförderung": {
+            "field_author": {"und": [{"value": "Wirtschaftsförderung Münster GmbH"}]},
+            "og_group_ref": {"und": [41367]},
+            "field_license": {"und": {"select": "notspecified"}}
+        },
+        "enviroCar": {
+            "field_author": {"und": [{"value": "enviroCar"}]},
+            "og_group_ref": {"und": [41366]},
+            "field_license": {"und": {"select": "notspecified"}}
+        },
         "CodeForMünster": {
             "field_author": {"und": [{"value": "CodeForMünster"}]},
             "og_group_ref": {"und": [41103]},
@@ -122,7 +132,7 @@ def getDkanData(data):
             "field_author": {"und": [{"value": "K3 Stadtführungen"}]},
             "og_group_ref": {"und": [41362]},
             "field_license": {"und": {"select": "Creative Commons Namensnennung 3.0 DE"}}
-        },        
+        },
     }
 
     if ("group" in data) and data["group"]:
@@ -171,7 +181,8 @@ def getDkanData(data):
         fieldWeight += 1
         additionalFields.append({"first": "Quelle", "second": data['Quelle'], "_weight": fieldWeight})
 
-    dkanData["field_additional_info"] = {"und": additionalFields}
+    # TODO: These are broken, check the changes in API and fix it
+    # dkanData["field_additional_info"] = {"und": additionalFields}
 
     return dkanData
 
@@ -180,7 +191,8 @@ def connect(args):
     global api
     print("DKAN url:", args.dkan_url)
 
-    api = DatasetAPI(args.dkan_url, args.user, args.passw)
+    # Last parameter is debug mode: True = Debugging ON
+    api = DatasetAPI(args.dkan_url, args.user, args.passw, True)
 
 
 def create(data):
@@ -189,6 +201,10 @@ def create(data):
     res = api.node('create', data=getDkanData(data))
     print("result", res.text)
     return res.json()['nid']
+
+    # BEKANNTE FEHLER
+    # - "Fehler bei der Eingabe\u00fcberpr\u00fcfung des Feldes"
+    #   => DKAN API hat ein Problem mit den Eingabedaten. Wahrscheinlich hat sich das Input-Json-Format geändert.
 
 
 def update(nodeId, data):
