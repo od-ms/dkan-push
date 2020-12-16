@@ -1,4 +1,4 @@
-[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/od-ms/dkan-push) 
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/od-ms/dkan-push)
 # DKAN SCRIPTS
 
 # 1. CREATE DKAN CONTENT STATISTIC
@@ -84,3 +84,13 @@ and add the following code in the method "requests" after the line "s = requests
       'http': 'http://proxy.some:8080',
       'https': 'http://proxy.other:8080',
     }
+
+## Debug
+
+DKAN's dataset API frequently changes. Unexpected responses are a common problem.
+
+1. Enable debug option of pydkan: Set last prameter of pydkan instantiation to true (see dkanhandler->function "connect")
+2. Check the log output for the last HTTP request that pydkan sent to DKAN API (probably a POST or PUT request)
+3. Use your favorite browser extension to manually send the same request
+4. remove fields from json POST BODY content one by one until response is OK
+5. Now you identified the json content that produced the error. Fix it by trial and error
